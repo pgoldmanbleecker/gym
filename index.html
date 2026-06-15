@@ -199,11 +199,11 @@
 
   <!-- ============ MUSCU ============ -->
   <section class="view" id="v-muscu">
-    <h2 class="sec">Programme PPL — 5 jours/sem</h2>
+    <h2 class="sec">Programme PPL — 1 jour sur 2</h2>
     <div class="chips" id="dayChips"></div>
     <div class="card flush"><div id="muscuList"></div></div>
     <div class="note">💡 Note tes charges à chaque exercice : elles sont sauvegardées et te servent de repère pour progresser semaine après semaine. Objectif : <b>augmenter les charges chaque semaine</b>.</div>
-    <h2 class="sec">Planning de la semaine</h2>
+    <h2 class="sec">Ton planning (1 jour sur 2)</h2>
     <div class="card flush"><table id="weekTable"></table></div>
   </section>
 
@@ -335,6 +335,8 @@ const PROGRAM = {
 };
 const DAY_KEYS=["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
 const DAY_FR={monday:"Lundi",tuesday:"Mardi",wednesday:"Mercredi",thursday:"Jeudi",friday:"Vendredi",saturday:"Samedi",sunday:"Dimanche"};
+// Rotation des séances (1 jour sur 2 de repos). Source unique = PROGRAM.
+const SESSIONS=["monday","tuesday","wednesday","thursday","friday"].map(k=>({key:k,...PROGRAM[k]}));
 
 const ROUTINE=[
   {t:"Matin",a:"Petit-déj protéiné (à emporter)"},
@@ -404,29 +406,50 @@ function sessionStore(dateKey){
   if(!DB.sessions[dateKey])DB.sessions[dateKey]={done:{},weights:{}};
   return DB.sessions[dateKey];
 }
-// Liste d'exercices d'un jour avec les personnalisations de Paul appliquées
+// Liste d'exercices d'une séance avec les personnalisations de Paul appliquées
 function exOf(dayKey){
   DB.custom=DB.custom||{};
   const ov=DB.custom[dayKey]||{};
   return PROGRAM[dayKey].ex.map((e,i)=>({...e,...(ov[i]||{})}));
 }
+// ----- Planning « 1 jour sur 2 » -----
+function anchorDate(){ if(!DB.anchor){DB.anchor=todayKey();save();} return DB.anchor; }
+function dayOffset(dateStr){
+  const a=new Date(anchorDate()+'T00:00'), t=new Date((dateStr||todayKey())+'T00:00');
+  return Math.round((t-a)/86400000);
+}
+// Renvoie la séance prévue pour un décalage de jours (rest=true si jour de repos)
+function scheduleFor(off){
+  if(off<0||off%2===1) return {rest:true,session:null,idx:-1};
+  const idx=(Math.floor(off/2)%SESSIONS.length+SESSIONS.length)%SESSIONS.length;
+  return {rest:false,session:SESSIONS[idx],idx};
+}
+function todaySchedule(){ return scheduleFor(dayOffset()); }
 function renderToday(){
-  const dk=todayDayKey(), prog={...PROGRAM[dk],ex:exOf(dk)};
-  $('todayWorkout').textContent=prog.name;
-  $('todayFocus').textContent=prog.focus;
-  $('exDayName').textContent="· "+DAY_FR[dk];
-
-  // routine
+  const sch=todaySchedule();
+  // reminders + routine (toujours affichés)
   $('routineCard').innerHTML=ROUTINE.map(r=>
     `<div class="ex"><div class="info"><div class="nm">${r.t}</div><div class="meta">${r.a}</div></div></div>`).join('');
-
-  // reminders
   $('remindersList').innerHTML=REMINDERS.map(r=>`<li>${r}</li>`).join('');
 
   const list=$('todayExList');
-  if(prog.ex.length===0){
+  if(sch.rest){
+    $('todayWorkout').textContent="Repos";
+    $('todayFocus').textContent="Jour de récupération — 1 jour sur 2";
+    $('exDayName').textContent="";
     list.innerHTML=`<div class="ex"><div class="info"><div class="nm">Jour de repos actif 🌿</div><div class="meta">Marche, natation ou vélo léger. Pense à enregistrer ton cardio !</div></div></div>`;
-    updateRing(dk);return;
+    const next=nextSession();
+    if(next)list.innerHTML+=`<div class="ex"><div class="info"><div class="nm" style="color:var(--accent2)">Prochaine séance : ${next.name}</div><div class="meta">${next.focus}</div></div></div>`;
+    updateRing();return;
+  }
+  const prog={...sch.session,ex:exOf(sch.session.key)};
+  $('todayWorkout').textContent=prog.name;
+  $('todayFocus').textContent=prog.focus;
+  $('exDayName').textContent="";
+
+  if(prog.ex.length===0){
+    list.innerHTML=`<div class="ex"><div class="info"><div class="nm">Jour de repos actif 🌿</div><div class="meta">Marche, natation ou vélo léger.</div></div></div>`;
+    updateRing();return;
   }
   const st=sessionStore(todayKey());
   DB.lastWeights=DB.lastWeights||{};
@@ -452,10 +475,16 @@ function renderToday(){
     if(el.value!=='')DB.lastWeights[prog.ex[i].n]=el.value;
     save();renderToday();
   });
-  updateRing(dk);
+  updateRing();
 }
-function updateRing(dk){
-  const total=exOf(dk).length;
+// Prochaine séance d'entraînement (utile les jours de repos)
+function nextSession(){
+  for(let k=1;k<=2;k++){const s=scheduleFor(dayOffset()+k);if(!s.rest)return s.session;}
+  return null;
+}
+function updateRing(){
+  const sch=todaySchedule();
+  const total=sch.rest?0:exOf(sch.session.key).length;
   const st=DB.sessions[todayKey()];
   const done=st?Object.values(st.done).filter(Boolean).length:0;
   const pct=total?Math.round(done/total*100):0;
@@ -476,8 +505,8 @@ let activeDay=null;
 function renderMuscu(){
   const chips=$('dayChips');
   const days=["monday","tuesday","wednesday","thursday","friday"];
-  if(!activeDay){activeDay=days.includes(todayDayKey())?todayDayKey():"monday";}
-  chips.innerHTML=days.map(d=>`<div class="chip ${d===activeDay?'on':''}" data-d="${d}">${DAY_FR[d]}<br><small style="opacity:.8">${PROGRAM[d].name}</small></div>`).join('');
+  if(!activeDay){const sc=todaySchedule();activeDay=(!sc.rest)?sc.session.key:"monday";}
+  chips.innerHTML=days.map((d,i)=>`<div class="chip ${d===activeDay?'on':''}" data-d="${d}">Séance ${i+1}<br><small style="opacity:.8">${PROGRAM[d].name}</small></div>`).join('');
   chips.querySelectorAll('[data-d]').forEach(c=>c.onclick=()=>{activeDay=c.dataset.d;renderMuscu();});
 
   const prog=PROGRAM[activeDay];
@@ -508,13 +537,17 @@ function renderMuscu(){
     ev.preventDefault();editExercise(activeDay,+el.dataset.edit);
   });
 
-  // semaine
-  $('weekTable').innerHTML=
-    `<tr><th>Jour</th><th>Séance</th></tr>`+
-    ["monday","tuesday","wednesday","thursday","friday","saturday"].map(d=>{
-      const p=PROGRAM[d];const lbl=d==="saturday"?"Week-end":DAY_FR[d];
-      return `<tr><td><b>${lbl}</b></td><td>${p.name}<br><small style="color:var(--muted)">${p.focus}</small></td></tr>`;
-    }).join('');
+  // cycle « 1 jour sur 2 » (10 jours = 5 séances + 5 repos)
+  const off0=dayOffset();
+  let rows='';
+  for(let k=0;k<10;k++){
+    const sc=scheduleFor(off0+k);
+    const isToday=k===0;
+    const lbl=isToday?"Aujourd'hui":(k===1?"Demain":"J+"+k);
+    const cell=sc.rest?`<span style="color:var(--muted)">Repos 🌿</span>`:`${sc.session.name}<br><small style="color:var(--muted)">${sc.session.focus}</small>`;
+    rows+=`<tr class="${isToday?'rowhi':''}"><td><b>${lbl}</b></td><td>${cell}</td></tr>`;
+  }
+  $('weekTable').innerHTML=`<tr><th>Jour</th><th>Séance</th></tr>`+rows;
 }
 
 // Modifier / remplacer un exercice (nom, séries, reps) — réversible
