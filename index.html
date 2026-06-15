@@ -420,13 +420,16 @@ function renderToday(){
     updateRing(dk);return;
   }
   const st=sessionStore(todayKey());
+  DB.lastWeights=DB.lastWeights||{};
   list.innerHTML=prog.ex.map((e,i)=>{
     const done=!!st.done[i];
     const w=st.weights[i]||'';
+    const last=DB.lastWeights[e.n];
+    const lastTxt=(last!==undefined&&last!=='')?` · <span style="color:var(--accent2)">dernière : ${last} kg</span>`:'';
     return `<div class="ex ${done?'done':''}" data-i="${i}">
       <div class="chk ${done?'on':''}" data-chk="${i}"></div>
-      <div class="info"><div class="nm">${e.n}</div><div class="meta">${e.s} séries × ${e.r}</div></div>
-      <div class="wlog"><input type="number" inputmode="decimal" placeholder="kg" value="${w}" data-w="${i}"><span>kg</span></div>
+      <div class="info"><div class="nm">${e.n}</div><div class="meta">${e.s} séries × ${e.r}${lastTxt}</div></div>
+      <div class="wlog"><input type="number" inputmode="decimal" placeholder="${(last!==undefined&&last!=='')?last:'kg'}" value="${w}" data-w="${i}"><span>kg</span></div>
     </div>`;
   }).join('');
 
@@ -434,7 +437,10 @@ function renderToday(){
     const i=el.dataset.chk;st.done[i]=!st.done[i];save();renderToday();
   });
   list.querySelectorAll('[data-w]').forEach(el=>el.onchange=()=>{
-    st.weights[el.dataset.w]=el.value;save();
+    const i=el.dataset.w;
+    st.weights[i]=el.value;
+    if(el.value!=='')DB.lastWeights[prog.ex[i].n]=el.value;
+    save();renderToday();
   });
   updateRing(dk);
 }
@@ -471,12 +477,18 @@ function renderMuscu(){
   const ref=DB.refWeights[activeDay]=DB.refWeights[activeDay]||{};
   $('muscuList').innerHTML=
     `<div class="ex" style="background:var(--card2)"><div class="info"><div class="nm" style="color:var(--accent)">${prog.name} — ${prog.focus}</div></div></div>`+
-    prog.ex.map((e,i)=>`<div class="ex">
+    prog.ex.map((e,i)=>{
+      const v=(ref[i]!==undefined&&ref[i]!=='')?ref[i]:(DB.lastWeights&&DB.lastWeights[e.n])||'';
+      return `<div class="ex">
       <div class="info"><div class="nm">${e.n}</div><div class="meta">${e.s} séries × ${e.r}</div></div>
-      <div class="wlog"><input type="number" inputmode="decimal" placeholder="kg" value="${ref[i]||''}" data-ref="${i}"><span>kg</span></div>
-    </div>`).join('');
+      <div class="wlog"><input type="number" inputmode="decimal" placeholder="kg" value="${v}" data-ref="${i}"><span>kg</span></div>
+    </div>`;}).join('');
   $('muscuList').querySelectorAll('[data-ref]').forEach(el=>el.onchange=()=>{
-    ref[el.dataset.ref]=el.value;save();toast("Charge enregistrée");
+    const i=el.dataset.ref;
+    ref[i]=el.value;
+    DB.lastWeights=DB.lastWeights||{};
+    if(el.value!=='')DB.lastWeights[prog.ex[i].n]=el.value;
+    save();toast("Charge enregistrée");
   });
 
   // semaine
