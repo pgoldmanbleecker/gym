@@ -404,8 +404,14 @@ function sessionStore(dateKey){
   if(!DB.sessions[dateKey])DB.sessions[dateKey]={done:{},weights:{}};
   return DB.sessions[dateKey];
 }
+// Liste d'exercices d'un jour avec les personnalisations de Paul appliquées
+function exOf(dayKey){
+  DB.custom=DB.custom||{};
+  const ov=DB.custom[dayKey]||{};
+  return PROGRAM[dayKey].ex.map((e,i)=>({...e,...(ov[i]||{})}));
+}
 function renderToday(){
-  const dk=todayDayKey(), prog=PROGRAM[dk];
+  const dk=todayDayKey(), prog={...PROGRAM[dk],ex:exOf(dk)};
   $('todayWorkout').textContent=prog.name;
   $('todayFocus').textContent=prog.focus;
   $('exDayName').textContent="· "+DAY_FR[dk];
@@ -449,7 +455,7 @@ function renderToday(){
   updateRing(dk);
 }
 function updateRing(dk){
-  const prog=PROGRAM[dk];const total=prog.ex.length;
+  const total=exOf(dk).length;
   const st=DB.sessions[todayKey()];
   const done=st?Object.values(st.done).filter(Boolean).length:0;
   const pct=total?Math.round(done/total*100):0;
@@ -475,25 +481,31 @@ function renderMuscu(){
   chips.querySelectorAll('[data-d]').forEach(c=>c.onclick=()=>{activeDay=c.dataset.d;renderMuscu();});
 
   const prog=PROGRAM[activeDay];
-  const st=sessionStore(todayKey());
+  const exs=exOf(activeDay);
   // charges persistées par jour de programme (référence)
   DB.refWeights=DB.refWeights||{};
   const ref=DB.refWeights[activeDay]=DB.refWeights[activeDay]||{};
+  const edited=DB.custom&&DB.custom[activeDay];
   $('muscuList').innerHTML=
     `<div class="ex" style="background:var(--card2)"><div class="info"><div class="nm" style="color:var(--accent)">${prog.name} — ${prog.focus}</div></div></div>`+
-    prog.ex.map((e,i)=>{
+    exs.map((e,i)=>{
       const v=(ref[i]!==undefined&&ref[i]!=='')?ref[i]:(DB.lastWeights&&DB.lastWeights[e.n])||'';
+      const isEd=edited&&edited[i];
       return `<div class="ex">
-      <div class="info"><div class="nm">${e.n}</div><div class="meta">${e.s} séries × ${e.r}</div>
-        <a class="demo" href="${demoUrl(e.n)}" target="_blank" rel="noopener">▶ voir la démo</a></div>
+      <div class="info"><div class="nm">${e.n}${isEd?' <span style="color:var(--accent2);font-size:11px">✎</span>':''}</div><div class="meta">${e.s} séries × ${e.r}</div>
+        <a class="demo" href="${demoUrl(e.n)}" target="_blank" rel="noopener">▶ voir la démo</a>
+        <a class="demo" style="color:var(--accent2);background:rgba(255,176,46,.12);margin-left:6px" href="#" data-edit="${i}">✎ modifier</a></div>
       <div class="wlog"><input type="number" inputmode="decimal" placeholder="kg" value="${v}" data-ref="${i}"><span>kg</span></div>
     </div>`;}).join('');
   $('muscuList').querySelectorAll('[data-ref]').forEach(el=>el.onchange=()=>{
     const i=el.dataset.ref;
     ref[i]=el.value;
     DB.lastWeights=DB.lastWeights||{};
-    if(el.value!=='')DB.lastWeights[prog.ex[i].n]=el.value;
+    if(el.value!=='')DB.lastWeights[exs[i].n]=el.value;
     save();toast("Charge enregistrée");
+  });
+  $('muscuList').querySelectorAll('[data-edit]').forEach(el=>el.onclick=ev=>{
+    ev.preventDefault();editExercise(activeDay,+el.dataset.edit);
   });
 
   // semaine
@@ -503,6 +515,23 @@ function renderMuscu(){
       const p=PROGRAM[d];const lbl=d==="saturday"?"Week-end":DAY_FR[d];
       return `<tr><td><b>${lbl}</b></td><td>${p.name}<br><small style="color:var(--muted)">${p.focus}</small></td></tr>`;
     }).join('');
+}
+
+// Modifier / remplacer un exercice (nom, séries, reps) — réversible
+function editExercise(dayKey,i){
+  const cur=exOf(dayKey)[i];
+  const name=prompt("Nom de l'exercice (vide = remettre l'original) :",cur.n);
+  if(name===null)return; // annulé
+  DB.custom=DB.custom||{};DB.custom[dayKey]=DB.custom[dayKey]||{};
+  if(name.trim()===''){ // réinitialiser cet exo
+    delete DB.custom[dayKey][i];
+    if(Object.keys(DB.custom[dayKey]).length===0)delete DB.custom[dayKey];
+    save();renderMuscu();renderToday();toast("Exercice réinitialisé");return;
+  }
+  const s=prompt("Nombre de séries :",cur.s);if(s===null)return;
+  const r=prompt("Répétitions (ex: 10, 12, Échec, 45s) :",cur.r);if(r===null)return;
+  DB.custom[dayKey][i]={n:name.trim(),s:(s.trim()||cur.s),r:(r.trim()||cur.r)};
+  save();renderMuscu();renderToday();toast("Exercice mis à jour ✎");
 }
 
 /* ============================================================
