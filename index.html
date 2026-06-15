@@ -153,9 +153,29 @@
     opacity:0;pointer-events:none;transition:.3s;z-index:100;box-shadow:0 6px 20px rgba(0,0,0,.4)}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .tiny{font-size:11px;color:var(--muted);text-align:center;margin-top:8px}
+  /* ---------- Lock screen ---------- */
+  #lock{position:fixed;inset:0;z-index:200;background:linear-gradient(160deg,#0f1115,#1c2029);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center}
+  #lock .logo{font-size:54px;margin-bottom:6px}
+  #lock h1{font-size:22px;font-weight:800;margin:0 0 4px}
+  #lock p{color:var(--muted);font-size:13px;margin:0 0 22px}
+  #lock input{width:100%;max-width:280px;background:var(--bg2);border:1px solid var(--line);color:var(--txt);
+    border-radius:12px;padding:14px;font-size:18px;text-align:center;letter-spacing:2px;font-weight:700}
+  #lock button{width:100%;max-width:280px;margin-top:12px;background:var(--accent);color:#fff;border:none;
+    border-radius:12px;padding:14px;font-size:16px;font-weight:800;cursor:pointer}
+  #lockMsg{color:var(--accent);font-size:13px;font-weight:700;min-height:18px;margin-top:12px}
 </style>
 </head>
 <body>
+
+<div id="lock">
+  <div class="logo">💪🔒</div>
+  <h1>Coach Paul</h1>
+  <p>Espace privé — entre ton code d'accès</p>
+  <input id="lockInput" type="password" inputmode="text" placeholder="Code" autocomplete="off">
+  <button id="lockBtn">Déverrouiller</button>
+  <div id="lockMsg"></div>
+</div>
 
 <header>
   <div class="h-top">
@@ -291,6 +311,7 @@
       </div>
       <input type="file" id="importFile" accept="application/json" style="display:none">
       <div class="tiny">Tes données sont stockées sur cet appareil. Exporte-les pour les sauvegarder ou changer de téléphone.</div>
+      <button class="btn ghost sm" id="lockBtnOut" style="margin-top:10px">🔒 Verrouiller l'appli</button>
     </div>
   </section>
 </main>
@@ -306,6 +327,33 @@
 <div class="toast" id="toast"></div>
 
 <script>
+/* ============================================================
+   VERROU D'ACCÈS (sécurité légère, code côté client)
+   Pour changer le code : remplace ACCESS_HASH par le SHA-256
+   de ton nouveau code (ou demande au coach de le régénérer).
+   ============================================================ */
+const ACCESS_HASH="8e546078ee43c4555a80903df3ac6b08f7b7e366122c637188415b7d9c1b7106";
+async function sha256(s){
+  if(window.crypto&&crypto.subtle){
+    const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
+    return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+  }
+  return 'nohash'; // contexte non sécurisé (ex: file://) → ouvre la page en https
+}
+(function lockInit(){
+  const lk=document.getElementById('lock');
+  if(localStorage.getItem('cp_unlocked')==='1'){lk.style.display='none';return;}
+  const inp=document.getElementById('lockInput'),msg=document.getElementById('lockMsg');
+  async function tryUnlock(){
+    const h=await sha256(inp.value.trim());
+    if(h===ACCESS_HASH){localStorage.setItem('cp_unlocked','1');lk.style.display='none';}
+    else{msg.textContent='Code incorrect ❌';inp.value='';inp.focus();}
+  }
+  document.getElementById('lockBtn').onclick=tryUnlock;
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')tryUnlock();});
+  inp.focus();
+})();
+
 /* ============================================================
    DONNÉES DU PROGRAMME (issues du récap de Paul)
    ============================================================ */
@@ -691,6 +739,8 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   b.classList.add('on');$('v-'+b.dataset.v).classList.add('active');
   window.scrollTo({top:0,behavior:'smooth'});
 });
+
+$('lockBtnOut').onclick=()=>{localStorage.removeItem('cp_unlocked');location.reload();};
 
 initHeader();
 renderAll();
