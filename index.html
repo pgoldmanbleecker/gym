@@ -72,6 +72,9 @@
   .ex .nm{font-weight:600;font-size:15px}
   .ex.done .nm{color:var(--muted);text-decoration:line-through}
   .ex .meta{font-size:12px;color:var(--muted);margin-top:1px}
+  .ex .demo{display:inline-flex;align-items:center;gap:3px;margin-top:5px;font-size:11px;font-weight:700;
+    color:var(--blue);text-decoration:none;background:rgba(58,160,255,.12);padding:3px 9px;border-radius:20px}
+  .ex .demo:active{opacity:.6}
   .ex .wlog{display:flex;align-items:center;gap:4px;flex:none}
   .ex .wlog input{width:54px;background:var(--bg2);border:1px solid var(--line);color:var(--txt);
     border-radius:9px;padding:7px 6px;font-size:14px;text-align:center;font-weight:700}
@@ -428,7 +431,8 @@ function renderToday(){
     const lastTxt=(last!==undefined&&last!=='')?` · <span style="color:var(--accent2)">dernière : ${last} kg</span>`:'';
     return `<div class="ex ${done?'done':''}" data-i="${i}">
       <div class="chk ${done?'on':''}" data-chk="${i}"></div>
-      <div class="info"><div class="nm">${e.n}</div><div class="meta">${e.s} séries × ${e.r}${lastTxt}</div></div>
+      <div class="info"><div class="nm">${e.n}</div><div class="meta">${e.s} séries × ${e.r}${lastTxt}</div>
+        <a class="demo" href="${demoUrl(e.n)}" target="_blank" rel="noopener">▶ voir la démo</a></div>
       <div class="wlog"><input type="number" inputmode="decimal" placeholder="${(last!==undefined&&last!=='')?last:'kg'}" value="${w}" data-w="${i}"><span>kg</span></div>
     </div>`;
   }).join('');
@@ -480,7 +484,8 @@ function renderMuscu(){
     prog.ex.map((e,i)=>{
       const v=(ref[i]!==undefined&&ref[i]!=='')?ref[i]:(DB.lastWeights&&DB.lastWeights[e.n])||'';
       return `<div class="ex">
-      <div class="info"><div class="nm">${e.n}</div><div class="meta">${e.s} séries × ${e.r}</div></div>
+      <div class="info"><div class="nm">${e.n}</div><div class="meta">${e.s} séries × ${e.r}</div>
+        <a class="demo" href="${demoUrl(e.n)}" target="_blank" rel="noopener">▶ voir la démo</a></div>
       <div class="wlog"><input type="number" inputmode="decimal" placeholder="kg" value="${v}" data-ref="${i}"><span>kg</span></div>
     </div>`;}).join('');
   $('muscuList').querySelectorAll('[data-ref]').forEach(el=>el.onchange=()=>{
@@ -613,6 +618,7 @@ $('importFile').onchange=e=>{
 /* ============================================================
    UTILS + NAV
    ============================================================ */
+function demoUrl(name){return 'https://www.youtube.com/results?search_query='+encodeURIComponent(name+' musculation technique exécution');}
 function fmtDate(s){try{return new Date(s+'T00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});}catch(e){return s;}}
 function escapeHtml(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function renderAll(){renderToday();renderMuscu();renderCardio();renderNutri();renderSuivi();}
