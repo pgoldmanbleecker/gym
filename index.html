@@ -386,7 +386,7 @@ const PROGRAM = {
     {n:"Curl biceps haltères",m:"Biceps",s:3,r:"12"},{n:"Pushdown triceps (poulie)",m:"Triceps",s:3,r:"15"}]},
   tuesday:   {name:"Repos", focus:"Marche en pente · Cardio léger", ex:[]},
   wednesday: {name:"Haut B", focus:"Pecs · Dos · Épaules · Bras", ex:[
-    {n:"Chest Press machine",m:"Pectoraux",s:4,r:"10"},{n:"Tirage horizontal (poulie)",m:"Dos (milieu)",s:4,r:"12"},
+    {n:"Chest Press machine",m:"Pectoraux",s:4,r:"10"},{n:"Rowing haltères (buste penché)",m:"Dos (milieu)",s:4,r:"12"},
     {n:"Élévations latérales",m:"Épaules (deltoïde latéral)",s:4,r:"15"},{n:"Tirage vertical prise serrée (poulie)",m:"Dos (grand dorsal)",s:3,r:"12"},
     {n:"Curl marteau",m:"Biceps · Avant-bras",s:3,r:"12"},{n:"Extension triceps haltère",m:"Triceps",s:3,r:"12"}]},
   thursday:  {name:"Repos", focus:"Marche en pente · Cardio léger", ex:[]},
@@ -527,14 +527,22 @@ function renderToday(){
   list.innerHTML=prog.ex.map((e,i)=>{
     const done=!!st.done[i];
     const w=st.weights[i]||'';
-    const last=DB.lastWeights[e.n];
-    const lastTxt=(last!==undefined&&last!=='')?` · <span style="color:var(--accent2)">dernière : ${last} kg</span>`:'';
+    const prev=lastHistWeight(e.n);
+    let lastTxt='';
+    if(prev!=null){
+      lastTxt=` · <span style="color:var(--accent2)">dernière : ${prev} kg</span>`;
+      const cur=parseFloat(w);
+      if(!isNaN(cur)&&cur!==prev){
+        const dlt=+(cur-prev).toFixed(1), up=dlt>0;
+        lastTxt+=` <span style="color:${up?'var(--green)':'#ff5a3c'};font-weight:700">${up?'▲ +':'▼ '}${dlt} kg</span>`;
+      }
+    }
     return `<div class="ex ${done?'done':''}" data-i="${i}">
       <div class="chk ${done?'on':''}" data-chk="${i}"></div>
       <div class="info"><div class="nm">${e.n}</div><div class="meta">${e.s} séries × ${e.r}${lastTxt}</div>
         ${e.m?`<div class="muscle">🎯 ${e.m}</div>`:''}
         <a class="demo" href="${demoUrl(e.n,e.m)}" target="_blank" rel="noopener">▶ voir la démo</a></div>
-      <div class="wlog"><input type="number" inputmode="decimal" placeholder="${(last!==undefined&&last!=='')?last:'kg'}" value="${w}" data-w="${i}"><span>kg</span></div>
+      <div class="wlog"><input type="number" inputmode="decimal" placeholder="${prev!=null?prev:'kg'}" value="${w}" data-w="${i}"><span>kg</span></div>
     </div>`;
   }).join('');
 
@@ -548,6 +556,16 @@ function renderToday(){
     save();renderToday();
   });
   updateRing();
+}
+// Charge de cet exercice lors de la dernière séance validée (hors aujourd'hui)
+function lastHistWeight(name,excludeDate){
+  excludeDate=excludeDate||todayKey();
+  const hs=(DB.history||[]).filter(h=>h.ex&&h.date!==excludeDate);
+  for(let i=hs.length-1;i>=0;i--){
+    const f=hs[i].ex.find(x=>x.n===name);
+    if(f&&f.w>0)return f.w;
+  }
+  return null;
 }
 // Prochaine séance d'entraînement (utile les jours de repos)
 function nextSession(){
