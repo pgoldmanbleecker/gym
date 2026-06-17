@@ -72,6 +72,7 @@
   .ex .nm{font-weight:600;font-size:15px}
   .ex.done .nm{color:var(--muted);text-decoration:line-through}
   .ex .meta{font-size:12px;color:var(--muted);margin-top:1px}
+  .ex .muscle{font-size:11px;font-weight:700;color:var(--accent2);margin-top:3px}
   .ex .demo{display:inline-flex;align-items:center;gap:3px;margin-top:5px;font-size:11px;font-weight:700;
     color:var(--blue);text-decoration:none;background:rgba(58,160,255,.12);padding:3px 9px;border-radius:20px}
   .ex .demo:active{opacity:.6}
@@ -359,20 +360,20 @@ async function sha256(s){
    ============================================================ */
 const PROGRAM = {
   monday:    {name:"Haut A", focus:"Pecs · Dos · Épaules · Bras", ex:[
-    {n:"Développé incliné haltères",s:4,r:"10"},{n:"Tirage vertical (poulie)",s:4,r:"10"},
-    {n:"Développé militaire haltères",s:3,r:"12"},{n:"Rowing barre",s:3,r:"12"},
-    {n:"Curl biceps haltères",s:3,r:"12"},{n:"Pushdown triceps (poulie)",s:3,r:"15"}]},
+    {n:"Développé incliné haltères",m:"Pectoraux (haut)",s:4,r:"10"},{n:"Tirage vertical (poulie)",m:"Dos (grand dorsal)",s:4,r:"10"},
+    {n:"Développé militaire haltères",m:"Épaules",s:3,r:"12"},{n:"Rowing barre",m:"Dos (milieu)",s:3,r:"12"},
+    {n:"Curl biceps haltères",m:"Biceps",s:3,r:"12"},{n:"Pushdown triceps (poulie)",m:"Triceps",s:3,r:"15"}]},
   tuesday:   {name:"Repos", focus:"Marche en pente · Cardio léger", ex:[]},
   wednesday: {name:"Haut B", focus:"Pecs · Dos · Épaules · Bras", ex:[
-    {n:"Chest Press machine",s:4,r:"10"},{n:"Tirage horizontal (poulie)",s:4,r:"12"},
-    {n:"Élévations latérales",s:4,r:"15"},{n:"Tirage vertical prise serrée (poulie)",s:3,r:"12"},
-    {n:"Curl marteau",s:3,r:"12"},{n:"Extension triceps haltère",s:3,r:"12"}]},
+    {n:"Chest Press machine",m:"Pectoraux",s:4,r:"10"},{n:"Tirage horizontal (poulie)",m:"Dos (milieu)",s:4,r:"12"},
+    {n:"Élévations latérales",m:"Épaules (deltoïde latéral)",s:4,r:"15"},{n:"Tirage vertical prise serrée (poulie)",m:"Dos (grand dorsal)",s:3,r:"12"},
+    {n:"Curl marteau",m:"Biceps · Avant-bras",s:3,r:"12"},{n:"Extension triceps haltère",m:"Triceps",s:3,r:"12"}]},
   thursday:  {name:"Repos", focus:"Marche en pente · Cardio léger", ex:[]},
   friday:    {name:"Haut C + Abdos", focus:"Pecs · Dos · Épaules · Bras · Abdos", ex:[
-    {n:"Écarté incliné haltères",s:3,r:"12"},{n:"Rowing unilatéral haltère",s:3,r:"12"},
-    {n:"Développé militaire haltères",s:3,r:"12"},{n:"Face pull (poulie)",s:3,r:"15"},
-    {n:"Curl incliné haltères",s:3,r:"12"},{n:"Pull-over haltère",s:3,r:"12"},
-    {n:"Crunch",s:4,r:"20"},{n:"Gainage",s:3,r:"45s"}]},
+    {n:"Écarté incliné haltères",m:"Pectoraux (haut)",s:3,r:"12"},{n:"Rowing unilatéral haltère",m:"Dos (grand dorsal)",s:3,r:"12"},
+    {n:"Développé militaire haltères",m:"Épaules",s:3,r:"12"},{n:"Face pull (poulie)",m:"Épaules (arrière) · Dos haut",s:3,r:"15"},
+    {n:"Curl incliné haltères",m:"Biceps",s:3,r:"12"},{n:"Pull-over haltère",m:"Dos · Pectoraux",s:3,r:"12"},
+    {n:"Crunch",m:"Abdominaux",s:4,r:"20"},{n:"Gainage",m:"Abdos · Sangle abdominale",s:3,r:"45s"}]},
   saturday:  {name:"Repos actif", focus:"Marche · Natation · Vélo léger", ex:[]},
   sunday:    {name:"Repos actif", focus:"Marche · Natation · Vélo léger", ex:[]}
 };
@@ -505,7 +506,8 @@ function renderToday(){
     return `<div class="ex ${done?'done':''}" data-i="${i}">
       <div class="chk ${done?'on':''}" data-chk="${i}"></div>
       <div class="info"><div class="nm">${e.n}</div><div class="meta">${e.s} séries × ${e.r}${lastTxt}</div>
-        <a class="demo" href="${demoUrl(e.n)}" target="_blank" rel="noopener">▶ voir la démo</a></div>
+        ${e.m?`<div class="muscle">🎯 ${e.m}</div>`:''}
+        <a class="demo" href="${demoUrl(e.n,e.m)}" target="_blank" rel="noopener">▶ voir la démo</a></div>
       <div class="wlog"><input type="number" inputmode="decimal" placeholder="${(last!==undefined&&last!=='')?last:'kg'}" value="${w}" data-w="${i}"><span>kg</span></div>
     </div>`;
   }).join('');
@@ -566,7 +568,8 @@ function renderMuscu(){
       const isEd=edited&&edited[i];
       return `<div class="ex">
       <div class="info"><div class="nm">${e.n}${isEd?' <span style="color:var(--accent2);font-size:11px">✎</span>':''}</div><div class="meta">${e.s} séries × ${e.r}</div>
-        <a class="demo" href="${demoUrl(e.n)}" target="_blank" rel="noopener">▶ voir la démo</a>
+        ${e.m?`<div class="muscle">🎯 ${e.m}</div>`:''}
+        <a class="demo" href="${demoUrl(e.n,e.m)}" target="_blank" rel="noopener">▶ voir la démo</a>
         <a class="demo" style="color:var(--accent2);background:rgba(255,176,46,.12);margin-left:6px" href="#" data-edit="${i}">✎ modifier</a></div>
       <div class="wlog"><input type="number" inputmode="decimal" placeholder="kg" value="${v}" data-ref="${i}"><span>kg</span></div>
     </div>`;}).join('');
@@ -724,7 +727,10 @@ $('importFile').onchange=e=>{
 /* ============================================================
    UTILS + NAV
    ============================================================ */
-function demoUrl(name){return 'https://www.youtube.com/results?search_query='+encodeURIComponent(name+' musculation technique exécution');}
+function demoUrl(name,muscle){
+  const q=name+(muscle?' '+muscle:'')+' musculation technique exécution';
+  return 'https://www.youtube.com/results?search_query='+encodeURIComponent(q);
+}
 function fmtDate(s){try{return new Date(s+'T00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});}catch(e){return s;}}
 function escapeHtml(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function renderAll(){renderToday();renderMuscu();renderCardio();renderNutri();renderSuivi();}
