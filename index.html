@@ -219,11 +219,11 @@
 
   <!-- ============ MUSCU ============ -->
   <section class="view" id="v-muscu">
-    <h2 class="sec">Programme PPL — 1 jour sur 2</h2>
+    <h2 class="sec">Programme Haut du corps — 3×/semaine</h2>
     <div class="chips" id="dayChips"></div>
     <div class="card flush"><div id="muscuList"></div></div>
     <div class="note">💡 Note tes charges à chaque exercice : elles sont sauvegardées et te servent de repère pour progresser semaine après semaine. Objectif : <b>augmenter les charges chaque semaine</b>.</div>
-    <h2 class="sec">Ton planning (1 jour sur 2)</h2>
+    <h2 class="sec">Ton planning (Lun · Mer · Ven)</h2>
     <div class="card flush"><table id="weekTable"></table></div>
   </section>
 
@@ -358,33 +358,29 @@ async function sha256(s){
    DONNÉES DU PROGRAMME (issues du récap de Paul)
    ============================================================ */
 const PROGRAM = {
-  monday:    {name:"Push", focus:"Pectoraux · Épaules · Triceps", ex:[
-    {n:"Développé incliné haltères",s:4,r:"10"},{n:"Développé militaire haltères",s:3,r:"12"},
-    {n:"Écarté incliné haltères",s:3,r:"12"},{n:"Élévations latérales",s:4,r:"15"},
-    {n:"Chest Press machine",s:3,r:"12"},{n:"Pushdown triceps (poulie)",s:3,r:"15"}]},
-  tuesday:   {name:"Pull", focus:"Dos · Biceps", ex:[
-    {n:"Tirage vertical (poulie)",s:4,r:"10"},{n:"Rowing barre",s:4,r:"10"},
-    {n:"Tirage horizontal (poulie)",s:3,r:"12"},{n:"Face pull (poulie)",s:3,r:"15"},
-    {n:"Curl biceps haltères",s:3,r:"12"},{n:"Curl marteau",s:3,r:"12"}]},
-  wednesday: {name:"Legs", focus:"Quadriceps · Ischio · Fessiers", ex:[
-    {n:"Squat barre",s:4,r:"10"},{n:"Fentes haltères",s:3,r:"12"},
-    {n:"Leg Extension machine",s:3,r:"12"},{n:"Soulevé de terre roumain haltères",s:3,r:"12"},
-    {n:"Mollets debout haltères",s:4,r:"15"}]},
-  thursday:  {name:"Push", focus:"Variante", ex:[
-    {n:"Chest Press machine",s:4,r:"10"},{n:"Développé militaire haltères",s:3,r:"12"},
-    {n:"Écarté incliné haltères",s:3,r:"12"},{n:"Élévations latérales",s:4,r:"15"},
-    {n:"Extension triceps haltère",s:3,r:"12"}]},
-  friday:    {name:"Pull + Abdos", focus:"Dos · Biceps · Abdominaux", ex:[
-    {n:"Tirage vertical prise serrée (poulie)",s:4,r:"10"},{n:"Rowing unilatéral haltère",s:3,r:"12"},
-    {n:"Pull-over haltère",s:3,r:"12"},{n:"Curl incliné haltères",s:3,r:"12"},
-    {n:"Crunch",s:4,r:"20"},{n:"Gainage",s:3,r:"45s"},{n:"Relevé de jambes",s:3,r:"15"}]},
+  monday:    {name:"Haut A", focus:"Pecs · Dos · Épaules · Bras", ex:[
+    {n:"Développé incliné haltères",s:4,r:"10"},{n:"Tirage vertical (poulie)",s:4,r:"10"},
+    {n:"Développé militaire haltères",s:3,r:"12"},{n:"Rowing barre",s:3,r:"12"},
+    {n:"Curl biceps haltères",s:3,r:"12"},{n:"Pushdown triceps (poulie)",s:3,r:"15"}]},
+  tuesday:   {name:"Repos", focus:"Marche en pente · Cardio léger", ex:[]},
+  wednesday: {name:"Haut B", focus:"Pecs · Dos · Épaules · Bras", ex:[
+    {n:"Chest Press machine",s:4,r:"10"},{n:"Tirage horizontal (poulie)",s:4,r:"12"},
+    {n:"Élévations latérales",s:4,r:"15"},{n:"Tirage vertical prise serrée (poulie)",s:3,r:"12"},
+    {n:"Curl marteau",s:3,r:"12"},{n:"Extension triceps haltère",s:3,r:"12"}]},
+  thursday:  {name:"Repos", focus:"Marche en pente · Cardio léger", ex:[]},
+  friday:    {name:"Haut C + Abdos", focus:"Pecs · Dos · Épaules · Bras · Abdos", ex:[
+    {n:"Écarté incliné haltères",s:3,r:"12"},{n:"Rowing unilatéral haltère",s:3,r:"12"},
+    {n:"Développé militaire haltères",s:3,r:"12"},{n:"Face pull (poulie)",s:3,r:"15"},
+    {n:"Curl incliné haltères",s:3,r:"12"},{n:"Pull-over haltère",s:3,r:"12"},
+    {n:"Crunch",s:4,r:"20"},{n:"Gainage",s:3,r:"45s"}]},
   saturday:  {name:"Repos actif", focus:"Marche · Natation · Vélo léger", ex:[]},
   sunday:    {name:"Repos actif", focus:"Marche · Natation · Vélo léger", ex:[]}
 };
 const DAY_KEYS=["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
 const DAY_FR={monday:"Lundi",tuesday:"Mardi",wednesday:"Mercredi",thursday:"Jeudi",friday:"Vendredi",saturday:"Samedi",sunday:"Dimanche"};
-// Rotation des séances (1 jour sur 2 de repos). Source unique = PROGRAM.
-const SESSIONS=["monday","tuesday","wednesday","thursday","friday"].map(k=>({key:k,...PROGRAM[k]}));
+// 3 séances « haut du corps » par semaine : Lundi · Mercredi · Vendredi
+const TRAINING_DAYS=["monday","wednesday","friday"];
+const SESSIONS=TRAINING_DAYS.map(k=>({key:k,...PROGRAM[k]}));
 
 const ROUTINE=[
   {t:"Matin",a:"Petit-déj protéiné (à emporter)"},
@@ -414,8 +410,8 @@ const RULES=[
 const REMINDERS=[
   "Pente tapis réduite à 5% (FC trop haute à 7%)",
   "Vitesse max confortable : 5,2 km/h",
-  "Séance muscu toujours à 18h",
-  "Programme PPL à affiner selon les machines en salle",
+  "Muscu haut du corps : Lundi · Mercredi · Vendredi",
+  "Jambes travaillées par la marche en pente",
   "Augmente les charges chaque semaine si possible",
   "Photos de progression tous les 30 jours"
 ];
@@ -460,19 +456,19 @@ function exOf(dayKey){
   const ov=DB.custom[dayKey]||{};
   return PROGRAM[dayKey].ex.map((e,i)=>({...e,...(ov[i]||{})}));
 }
-// ----- Planning « 1 jour sur 2 » -----
-function anchorDate(){ if(!DB.anchor){DB.anchor=todayKey();save();} return DB.anchor; }
-function dayOffset(dateStr){
-  const a=new Date(anchorDate()+'T00:00'), t=new Date((dateStr||todayKey())+'T00:00');
-  return Math.round((t-a)/86400000);
+// ----- Planning hebdomadaire fixe (Lun · Mer · Ven) -----
+// Renvoie la séance prévue pour un jour de la semaine (rest=true si repos)
+function scheduleForDay(dayKey){
+  const p=PROGRAM[dayKey];
+  if(!p||p.ex.length===0) return {rest:true,session:null};
+  return {rest:false,session:{key:dayKey,...p}};
 }
-// Renvoie la séance prévue pour un décalage de jours (rest=true si jour de repos)
+// Séance prévue à J+k (0 = aujourd'hui)
 function scheduleFor(off){
-  if(off<0||off%2===1) return {rest:true,session:null,idx:-1};
-  const idx=(Math.floor(off/2)%SESSIONS.length+SESSIONS.length)%SESSIONS.length;
-  return {rest:false,session:SESSIONS[idx],idx};
+  const d=new Date();d.setDate(d.getDate()+off);
+  return scheduleForDay(DAY_KEYS[d.getDay()]);
 }
-function todaySchedule(){ return scheduleFor(dayOffset()); }
+function todaySchedule(){ return scheduleForDay(todayDayKey()); }
 function renderToday(){
   const sch=todaySchedule();
   // reminders + routine (toujours affichés)
@@ -483,9 +479,9 @@ function renderToday(){
   const list=$('todayExList');
   if(sch.rest){
     $('todayWorkout').textContent="Repos";
-    $('todayFocus').textContent="Jour de récupération — 1 jour sur 2";
+    $('todayFocus').textContent="Jour de repos — muscu Lun · Mer · Ven";
     $('exDayName').textContent="";
-    list.innerHTML=`<div class="ex"><div class="info"><div class="nm">Jour de repos actif 🌿</div><div class="meta">Marche, natation ou vélo léger. Pense à enregistrer ton cardio !</div></div></div>`;
+    list.innerHTML=`<div class="ex"><div class="info"><div class="nm">Jour de repos actif 🌿</div><div class="meta">Marche en pente, natation ou vélo léger. Pense à enregistrer ton cardio !</div></div></div>`;
     const next=nextSession();
     if(next)list.innerHTML+=`<div class="ex"><div class="info"><div class="nm" style="color:var(--accent2)">Prochaine séance : ${next.name}</div><div class="meta">${next.focus}</div></div></div>`;
     updateRing();return;
@@ -527,7 +523,7 @@ function renderToday(){
 }
 // Prochaine séance d'entraînement (utile les jours de repos)
 function nextSession(){
-  for(let k=1;k<=2;k++){const s=scheduleFor(dayOffset()+k);if(!s.rest)return s.session;}
+  for(let k=1;k<=7;k++){const s=scheduleFor(k);if(!s.rest)return s.session;}
   return null;
 }
 function updateRing(){
@@ -552,9 +548,9 @@ $('resetToday').onclick=()=>{
 let activeDay=null;
 function renderMuscu(){
   const chips=$('dayChips');
-  const days=["monday","tuesday","wednesday","thursday","friday"];
+  const days=TRAINING_DAYS;
   if(!activeDay){const sc=todaySchedule();activeDay=(!sc.rest)?sc.session.key:"monday";}
-  chips.innerHTML=days.map((d,i)=>`<div class="chip ${d===activeDay?'on':''}" data-d="${d}">Séance ${i+1}<br><small style="opacity:.8">${PROGRAM[d].name}</small></div>`).join('');
+  chips.innerHTML=days.map((d,i)=>`<div class="chip ${d===activeDay?'on':''}" data-d="${d}">${DAY_FR[d]}<br><small style="opacity:.8">${PROGRAM[d].name}</small></div>`).join('');
   chips.querySelectorAll('[data-d]').forEach(c=>c.onclick=()=>{activeDay=c.dataset.d;renderMuscu();});
 
   const prog=PROGRAM[activeDay];
@@ -585,16 +581,16 @@ function renderMuscu(){
     ev.preventDefault();editExercise(activeDay,+el.dataset.edit);
   });
 
-  // cycle « 1 jour sur 2 » (10 jours = 5 séances + 5 repos)
-  const off0=dayOffset();
+  // semaine fixe : Lundi → Dimanche (muscu Lun · Mer · Ven)
+  const weekOrder=["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
+  const todayK=todayDayKey();
   let rows='';
-  for(let k=0;k<10;k++){
-    const sc=scheduleFor(off0+k);
-    const isToday=k===0;
-    const lbl=isToday?"Aujourd'hui":(k===1?"Demain":"J+"+k);
+  weekOrder.forEach(d=>{
+    const sc=scheduleForDay(d);
+    const isToday=d===todayK;
     const cell=sc.rest?`<span style="color:var(--muted)">Repos 🌿</span>`:`${sc.session.name}<br><small style="color:var(--muted)">${sc.session.focus}</small>`;
-    rows+=`<tr class="${isToday?'rowhi':''}"><td><b>${lbl}</b></td><td>${cell}</td></tr>`;
-  }
+    rows+=`<tr class="${isToday?'rowhi':''}"><td><b>${DAY_FR[d]}</b></td><td>${cell}</td></tr>`;
+  });
   $('weekTable').innerHTML=`<tr><th>Jour</th><th>Séance</th></tr>`+rows;
 }
 
