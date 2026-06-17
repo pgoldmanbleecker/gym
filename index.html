@@ -297,25 +297,16 @@
       <div class="tiny">Pèse-toi 1×/semaine, le matin à jeun.</div>
     </div>
 
-    <h2 class="sec">💪 Volume des séances</h2>
-    <div class="stat3">
-      <div class="stat"><div class="sv" id="sCount">0</div><div class="sl">Séances validées</div></div>
-      <div class="stat"><div class="sv" id="sLastVol">—</div><div class="sl">Dernier volume</div></div>
-      <div class="stat"><div class="sv" id="sBestVol">—</div><div class="sl">Record</div></div>
-    </div>
-    <div class="card">
-      <svg class="chart" id="volChart" viewBox="0 0 320 160" preserveAspectRatio="none"></svg>
-      <div class="tiny">Volume = charges × séries × répétitions sur la séance. Note tes charges et valide tes séances pour voir ta progression. 📈</div>
-    </div>
-    <div class="card flush" id="histLog"></div>
-
     <h2 class="sec">🏋️ Progression par exercice</h2>
     <div class="card">
       <div class="field" style="margin-bottom:8px"><label>Choisis un exercice</label>
         <select id="exSelect"></select></div>
       <svg class="chart" id="exChart" viewBox="0 0 320 160" preserveAspectRatio="none"></svg>
-      <div class="tiny">Charge enregistrée à chaque <b>séance validée</b>. Objectif : la faire monter régulièrement 💪</div>
+      <div class="tiny">Évolution de ta <b>charge de travail</b> à chaque séance validée. Objectif : la faire monter régulièrement 💪</div>
     </div>
+
+    <h2 class="sec">📋 Séances validées <span id="sCount" style="color:var(--accent)"></span></h2>
+    <div class="card flush" id="histLog"></div>
 
     <h2 class="sec">📅 Journal</h2>
     <div class="card">
@@ -589,15 +580,6 @@ $('resetToday').onclick=()=>{
   if(!confirm("Réinitialiser la séance d'aujourd'hui ?"))return;
   delete DB.sessions[todayKey()];save();renderToday();renderSuivi();toast("Séance réinitialisée");
 };
-// Volume d'une séance = Σ charge × séries × répétitions
-function sessionVolume(prog,st){
-  let v=0;
-  prog.ex.forEach((e,i)=>{
-    const w=parseFloat(st.weights[i])||0, reps=parseInt(e.r)||0;
-    v+=w*e.s*reps;
-  });
-  return Math.round(v);
-}
 $('validateToday').onclick=()=>{
   const sch=todaySchedule();
   if(sch.rest){toast("Pas de séance aujourd'hui 🌿");return;}
@@ -605,17 +587,16 @@ $('validateToday').onclick=()=>{
   const st=sessionStore(todayKey());
   const done=prog.ex.filter((e,i)=>st.done[i]).length;
   if(done===0&&!confirm("Aucun exercice coché. Valider la séance quand même ?"))return;
-  const vol=sessionVolume(prog,st);
   st.validated=true;
   DB.history=DB.history||[];
   const date=todayKey();
   const exData=prog.ex.map((e,i)=>({n:e.n,w:parseFloat(st.weights[i])||0}));
-  const entry={date,dayKey:sch.session.key,name:prog.name,volume:vol,done,total:prog.ex.length,ex:exData};
+  const entry={date,dayKey:sch.session.key,name:prog.name,done,total:prog.ex.length,ex:exData};
   const ix=DB.history.findIndex(h=>h.date===date);
   if(ix>=0)DB.history[ix]=entry; else DB.history.push(entry);
   DB.history.sort((a,b)=>a.date<b.date?-1:1);
   save();renderToday();renderSuivi();
-  toast(vol>0?("Séance validée ✅ — volume "+vol+" kg"):"Séance validée ✅");
+  toast("Séance validée ✅");
 };
 
 /* ============================================================
@@ -738,7 +719,6 @@ function renderSuivi(){
     }else $('wDelta').textContent='—';
   }else{$('wCur').textContent='—';$('wDelta').textContent='—';}
   drawChart();
-  drawVolChart();
 
   // progression par exercice
   const sel=$('exSelect');
@@ -751,11 +731,12 @@ function renderSuivi(){
 
   // historique des séances validées
   const hl=$('histLog'), hist=(DB.history||[]).slice().reverse();
+  $('sCount').textContent=hist.length?`(${hist.length})`:'';
   if(!hist.length)hl.innerHTML='<div class="empty">Aucune séance validée — valide ta 1ère séance dans l\'onglet Aujourd\'hui</div>';
   else hl.innerHTML=hist.map(h=>
     `<div class="logitem"><div class="dot"></div><div>
       <div class="ld">${fmtDate(h.date)} · ${h.name}</div>
-      <div class="lt">${h.done}/${h.total} exos${h.volume>0?` · volume ${h.volume} kg`:''}</div></div></div>`).join('');
+      <div class="lt">${h.done}/${h.total} exercices terminés</div></div></div>`).join('');
 
   // journal
   const j=$('journalLog');
@@ -797,29 +778,6 @@ function drawChart(){
     <path d="${area}" fill="url(#g)"/><path d="${d}" fill="none" stroke="#ff5a3c" stroke-width="2.5" stroke-linejoin="round"/>${dots}
     <text x="${pad}" y="12" fill="#8b93a4" font-size="10">${mx.toFixed(1)}</text>
     <text x="${pad}" y="${H-2}" fill="#8b93a4" font-size="10">${mn.toFixed(1)}</text>`;
-}
-
-function drawVolChart(){
-  const h=(DB.history||[]).slice(), svg=$('volChart');
-  $('sCount').textContent=h.length;
-  if(h.length){
-    $('sLastVol').textContent=h[h.length-1].volume;
-    $('sBestVol').textContent=Math.max(...h.map(x=>x.volume));
-  }else{$('sLastVol').textContent='—';$('sBestVol').textContent='—';}
-  const W=320,H=160,pad=14;
-  if(h.length<2){svg.innerHTML=`<text x="160" y="84" fill="#8b93a4" font-size="12" text-anchor="middle">Valide au moins 2 séances pour voir la courbe</text>`;return;}
-  const ys=h.map(p=>p.volume);let mn=Math.min(...ys),mx=Math.max(...ys);
-  if(mn===mx){mn=Math.max(0,mn-1);mx+=1;}const rng=mx-mn||1;
-  const X=i=>pad+(W-2*pad)*(i/(h.length-1));
-  const Y=v=>H-pad-(H-2*pad)*((v-mn)/rng);
-  let d='';h.forEach((p,i)=>{d+=(i?'L':'M')+X(i)+' '+Y(p.volume)+' ';});
-  const area=`M${X(0)} ${H-pad} `+h.map((p,i)=>`L${X(i)} ${Y(p.volume)}`).join(' ')+` L${X(h.length-1)} ${H-pad} Z`;
-  const dots=h.map((p,i)=>`<circle cx="${X(i)}" cy="${Y(p.volume)}" r="3.2" fill="#ffb02e"/>`).join('');
-  svg.innerHTML=`<defs><linearGradient id="gv" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#ffb02e" stop-opacity=".35"/><stop offset="1" stop-color="#ffb02e" stop-opacity="0"/></linearGradient></defs>
-    <path d="${area}" fill="url(#gv)"/><path d="${d}" fill="none" stroke="#ffb02e" stroke-width="2.5" stroke-linejoin="round"/>${dots}
-    <text x="${pad}" y="12" fill="#8b93a4" font-size="10">${mx}</text>
-    <text x="${pad}" y="${H-2}" fill="#8b93a4" font-size="10">${mn}</text>`;
 }
 
 // Liste unique des exercices du programme (toutes séances confondues)
