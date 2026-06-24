@@ -233,13 +233,15 @@
 
   <!-- ============ CARDIO ============ -->
   <section class="view" id="v-cardio">
-    <h2 class="sec">🚶 Marche rapide — Tapis</h2>
+    <h2 class="sec">🚶 Marche en pente — midi</h2>
     <div class="card">
       <div class="kv"><span class="k">Vitesse actuelle</span><span class="v" id="cVit">5,2 km/h</span></div>
       <div class="kv"><span class="k">Pente</span><span class="v" id="cPente">5%</span></div>
       <div class="kv"><span class="k">Durée</span><span class="v">30 min</span></div>
       <div class="kv"><span class="k">FC cible</span><span class="v" style="color:var(--green)">130–150 BPM</span></div>
     </div>
+    <button class="btn" id="walkQuick">✅ J'ai fait ma marche du midi</button>
+    <div class="tiny" id="walkCount" style="text-align:center"></div>
     <h2 class="sec">📈 Progression prévue</h2>
     <div class="card flush"><table id="cardioProg"></table></div>
     <div class="note warn">⚠️ Garde la FC dans la zone 130–150. Au Jour 1 elle est montée à 181–191 → pente réduite de 7% à 5%. Augmente vitesse OU pente toutes les 2 semaines seulement.</div>
@@ -446,6 +448,7 @@ function fresh(){return{sessions:{},weights:[],cardio:[],journal:[],history:[]};
 function save(){localStorage.setItem(LS,JSON.stringify(DB));}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._);t._=setTimeout(()=>t.classList.remove('show'),1600);}
 const todayKey=()=>new Date().toISOString().slice(0,10);
+function weekStartKey(){const d=new Date();const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return d.toISOString().slice(0,10);}
 const $=id=>document.getElementById(id);
 
 /* ============================================================
@@ -675,17 +678,32 @@ function editExercise(dayKey,i){
 function renderCardio(){
   $('cardioProg').innerHTML=`<tr><th>Sem.</th><th class="num">Vitesse</th><th class="num">Pente</th></tr>`+
     CARDIO_PROG.map(c=>`<tr><td>${c.sem}</td><td class="num">${c.v}</td><td class="num">${c.p}</td></tr>`).join('');
+  // compteur de marches
+  const wk=weekStartKey();
+  const thisWeek=DB.cardio.filter(c=>c.date>=wk).length;
+  $('walkCount').textContent=DB.cardio.length
+    ? `${DB.cardio.length} séance(s) au total · ${thisWeek} cette semaine`
+    : "Aucune marche enregistrée pour l'instant";
   const log=$('cardioLog');
   if(!DB.cardio.length){log.innerHTML='<div class="empty">Aucune séance cardio enregistrée</div>';return;}
   log.innerHTML=DB.cardio.slice().reverse().map((c,ri)=>{
     const idx=DB.cardio.length-1-ri;
+    const parts=[];
+    if(c.min)parts.push(`${c.min} min`);
+    if(c.km)parts.push(`${c.km} km`);
+    if(c.kcal)parts.push(`${c.kcal} kcal`);
+    if(c.fc)parts.push(`FC ${c.fc}`);
     return `<div class="logitem"><div class="dot"></div><div>
-      <div class="ld">${fmtDate(c.date)}</div>
-      <div class="lt">${c.min||'?'} min · ${c.kcal||'?'} kcal · ${c.km||'?'} km${c.fc?` · FC ${c.fc}`:''}</div>
+      <div class="ld">🚶 ${fmtDate(c.date)}</div>
+      <div class="lt">${parts.join(' · ')||'Marche'}</div>
     </div><button class="del" data-cd="${idx}">✕</button></div>`;
   }).join('');
   log.querySelectorAll('[data-cd]').forEach(b=>b.onclick=()=>{DB.cardio.splice(b.dataset.cd,1);save();renderCardio();});
 }
+$('walkQuick').onclick=()=>{
+  DB.cardio.push({date:todayKey(),min:30,kcal:'',km:'',fc:''});
+  save();renderCardio();toast("Marche du midi enregistrée 🚶");
+};
 $('cardioSave').onclick=()=>{
   const c={date:todayKey(),min:$('cdMin').value,kcal:$('cdKcal').value,km:$('cdKm').value,fc:$('cdFc').value};
   if(!c.min&&!c.kcal&&!c.km){toast("Remplis au moins un champ");return;}
