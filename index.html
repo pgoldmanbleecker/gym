@@ -303,6 +303,18 @@
       <div class="tiny">Pèse-toi 1×/semaine, le matin à jeun.</div>
     </div>
 
+    <h2 class="sec">🎯 Bilan mensuel <span id="cpDue" style="font-size:12px;color:var(--accent)"></span></h2>
+    <div class="card">
+      <div class="row2">
+        <div class="field"><label>Poids (kg)</label><input type="number" id="cpKg" inputmode="decimal" step="0.1" placeholder="75.0"></div>
+        <div class="field"><label>Tour de taille (cm)</label><input type="number" id="cpWaist" inputmode="decimal" step="0.5" placeholder="80"></div>
+      </div>
+      <div class="field"><label>Ressenti / notes</label><textarea id="cpNote" placeholder="Ex : photos prises ✅, je me sens plus sec, +2,5 kg au développé..."></textarea></div>
+      <button class="btn" id="cpSave">📸 Enregistrer le bilan</button>
+      <div class="tiny">À faire tous les <b>30 jours</b> : pèse-toi + prends 3 photos (face · profil · dos) pour comparer ta route vers ton objectif.</div>
+    </div>
+    <div class="card flush" id="cpLog"></div>
+
     <h2 class="sec">🏋️ Progression par exercice</h2>
     <div class="card">
       <div class="field" style="margin-bottom:8px"><label>Choisis un exercice</label>
@@ -448,7 +460,7 @@ const RECOVERY=[
 const LS="coachPaul_v1";
 let DB=load();
 function load(){try{return JSON.parse(localStorage.getItem(LS))||fresh()}catch(e){return fresh()}}
-function fresh(){return{sessions:{},weights:[],cardio:[],journal:[],history:[]};}
+function fresh(){return{sessions:{},weights:[],cardio:[],journal:[],history:[],checkpoints:[]};}
 function save(){localStorage.setItem(LS,JSON.stringify(DB));}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._);t._=setTimeout(()=>t.classList.remove('show'),1600);}
 const todayKey=()=>new Date().toISOString().slice(0,10);
@@ -762,6 +774,30 @@ function renderSuivi(){
       <div class="ld">${fmtDate(h.date)} · ${h.name}</div>
       <div class="lt">${h.done}/${h.total} exercices terminés</div></div></div>`).join('');
 
+  // bilan mensuel
+  const cps=(DB.checkpoints||[]).slice().reverse();
+  const due=$('cpDue');
+  if(!cps.length){due.textContent='(à démarrer)';}
+  else{
+    const days=Math.floor((new Date(todayKey())-new Date(cps[0].date))/86400000);
+    const left=30-days;
+    due.textContent=left<=0?'⏰ à faire !':`dans ${left} j`;
+    due.style.color=left<=0?'#ff5a3c':'var(--accent)';
+  }
+  const cl=$('cpLog');
+  if(!cps.length)cl.innerHTML='<div class="empty">Aucun bilan — fais ton 1er point de départ 📸</div>';
+  else cl.innerHTML=cps.map((c,ri)=>{
+    const idx=DB.checkpoints.length-1-ri;
+    const bits=[];
+    if(c.kg)bits.push(`${c.kg} kg`);
+    if(c.waist)bits.push(`taille ${c.waist} cm`);
+    return `<div class="logitem"><div class="dot"></div><div>
+      <div class="ld">📸 ${fmtDate(c.date)}${bits.length?' · '+bits.join(' · '):''}</div>
+      ${c.note?`<div class="lt">${escapeHtml(c.note)}</div>`:''}</div>
+      <button class="del" data-cp="${idx}">✕</button></div>`;
+  }).join('');
+  cl.querySelectorAll('[data-cp]').forEach(b=>b.onclick=()=>{DB.checkpoints.splice(b.dataset.cp,1);save();renderSuivi();});
+
   // journal
   const j=$('journalLog');
   if(!DB.journal.length)j.innerHTML='<div class="empty">Journal vide — ajoute ta première note</div>';
@@ -779,6 +815,14 @@ $('wSave').onclick=()=>{
   const v=parseFloat($('wInput').value);
   if(!v){toast("Entre un poids valide");return;}
   DB.weights.push({date:todayKey(),kg:v});save();$('wInput').value='';renderSuivi();toast("Poids enregistré ⚖️");
+};
+$('cpSave').onclick=()=>{
+  const kg=$('cpKg').value,waist=$('cpWaist').value,note=$('cpNote').value.trim();
+  if(!kg&&!waist&&!note){toast("Remplis au moins un champ");return;}
+  DB.checkpoints=DB.checkpoints||[];
+  DB.checkpoints.push({date:todayKey(),kg,waist,note});save();
+  ['cpKg','cpWaist','cpNote'].forEach(id=>$(id).value='');
+  renderSuivi();toast("Bilan enregistré 📸");
 };
 $('jSave').onclick=()=>{
   const t=$('jInput').value.trim();
