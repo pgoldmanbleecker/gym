@@ -256,6 +256,10 @@
         <div class="field"><label>Distance (km)</label><input type="number" id="cdKm" inputmode="decimal" step="0.1" placeholder="2.5"></div>
         <div class="field"><label>FC moy (BPM)</label><input type="number" id="cdFc" inputmode="numeric" placeholder="145"></div>
       </div>
+      <div class="row2">
+        <div class="field"><label>Vitesse (km/h)</label><input type="number" id="cdVit" inputmode="decimal" step="0.1" placeholder="5.2"></div>
+        <div class="field"><label>Pente (%)</label><input type="number" id="cdPente" inputmode="numeric" placeholder="5"></div>
+      </div>
       <button class="btn" id="cardioSave">Enregistrer</button>
     </div>
     <div class="card flush" id="cardioLog"></div>
@@ -690,6 +694,8 @@ function renderCardio(){
     const idx=DB.cardio.length-1-ri;
     const parts=[];
     if(c.min)parts.push(`${c.min} min`);
+    if(c.vit)parts.push(`${c.vit} km/h`);
+    if(c.pente)parts.push(`pente ${c.pente}%`);
     if(c.km)parts.push(`${c.km} km`);
     if(c.kcal)parts.push(`${c.kcal} kcal`);
     if(c.fc)parts.push(`FC ${c.fc}`);
@@ -701,14 +707,14 @@ function renderCardio(){
   log.querySelectorAll('[data-cd]').forEach(b=>b.onclick=()=>{DB.cardio.splice(b.dataset.cd,1);save();renderCardio();});
 }
 $('walkQuick').onclick=()=>{
-  DB.cardio.push({date:todayKey(),min:30,kcal:'',km:'',fc:''});
+  DB.cardio.push({date:todayKey(),min:30,vit:'5,2',pente:'5',kcal:'',km:'',fc:''});
   save();renderCardio();toast("Marche du midi enregistrée 🚶");
 };
 $('cardioSave').onclick=()=>{
-  const c={date:todayKey(),min:$('cdMin').value,kcal:$('cdKcal').value,km:$('cdKm').value,fc:$('cdFc').value};
-  if(!c.min&&!c.kcal&&!c.km){toast("Remplis au moins un champ");return;}
+  const c={date:todayKey(),min:$('cdMin').value,kcal:$('cdKcal').value,km:$('cdKm').value,fc:$('cdFc').value,vit:$('cdVit').value,pente:$('cdPente').value};
+  if(!c.min&&!c.kcal&&!c.km&&!c.vit){toast("Remplis au moins un champ");return;}
   DB.cardio.push(c);save();
-  ['cdMin','cdKcal','cdKm','cdFc'].forEach(id=>$(id).value='');
+  ['cdMin','cdKcal','cdKm','cdFc','cdVit','cdPente'].forEach(id=>$(id).value='');
   renderCardio();toast("Cardio enregistré 🚶");
 };
 
