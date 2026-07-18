@@ -176,6 +176,21 @@
   #lock button{width:100%;max-width:280px;margin-top:12px;background:var(--accent);color:#fff;border:none;
     border-radius:12px;padding:14px;font-size:16px;font-weight:800;cursor:pointer}
   #lockMsg{color:var(--accent);font-size:13px;font-weight:700;min-height:18px;margin-top:12px}
+  /* ---------- Sélecteur d'exercices ---------- */
+  #picker{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.6);display:none;
+    flex-direction:column;justify-content:flex-end}
+  #picker .pkbox{background:var(--bg);border-radius:18px 18px 0 0;max-height:85vh;display:flex;flex-direction:column;
+    border-top:1px solid var(--line)}
+  #picker .pkhead{display:flex;gap:8px;padding:14px;border-bottom:1px solid var(--line)}
+  #picker #pkSearch{flex:1;background:var(--bg2);border:1px solid var(--line);color:var(--txt);border-radius:12px;padding:12px;font-size:15px}
+  #picker #pkClose{background:var(--bg2);border:1px solid var(--line);color:var(--txt);border-radius:12px;width:44px;font-size:18px;font-weight:700;cursor:pointer}
+  #picker #pkResults{overflow-y:auto;padding:8px 10px 20px}
+  #picker .pkitem{display:flex;align-items:center;gap:12px;padding:8px;border-radius:12px;cursor:pointer}
+  #picker .pkitem:active{background:var(--bg2)}
+  #picker .pkitem img{width:52px;height:52px;border-radius:8px;background:#fff;object-fit:cover;flex:none}
+  #picker .pkinfo{min-width:0}
+  #picker .pkn{font-weight:700;font-size:14px}
+  #picker .pkm{font-size:12px;color:var(--muted);margin-top:1px}
 </style>
 </head>
 <body>
@@ -370,6 +385,16 @@
 
 <div class="toast" id="toast"></div>
 
+<div id="picker">
+  <div class="pkbox">
+    <div class="pkhead">
+      <input id="pkSearch" type="text" placeholder="🔍 Rechercher un exercice (ex: curl, press, dos…)" autocomplete="off">
+      <button id="pkClose">✕</button>
+    </div>
+    <div id="pkResults"></div>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    VERROU D'ACCÈS (sécurité légère, code côté client)
@@ -504,8 +529,11 @@ function sessionStore(dateKey){
 function exOf(dayKey){
   DB.custom=DB.custom||{};
   const ov=DB.custom[dayKey]||{};
-  return PROGRAM[dayKey].ex.map((e,i)=>({...e,...(ov[i]||{})}));
+  const base=PROGRAM[dayKey].ex.map((e,i)=>({...e,...(ov[i]||{})}));
+  const added=(DB.added&&DB.added[dayKey])||[];
+  return base.concat(added);
 }
+function baseLen(dayKey){return PROGRAM[dayKey].ex.length;}
 // ----- Planning hebdomadaire fixe (Lun · Mer · Ven) -----
 // Renvoie la séance prévue pour un jour de la semaine (rest=true si repos)
 function scheduleForDay(dayKey){
@@ -569,7 +597,7 @@ function renderToday(){
       <div class="chk ${done?'on':''}" data-chk="${i}"></div>
       <div class="info"><div class="nm">${e.n}</div><div class="meta">${e.s} séries × ${e.r}${lastTxt}</div>
         ${e.m?`<div class="muscle">🎯 ${e.m}</div>`:''}
-        <a class="demo" href="${demoUrl(e.n,e.m)}" target="_blank" rel="noopener">▶ voir la démo</a>${techHtml(e.n)}</div>
+        <a class="demo" href="${demoUrl(e.n,e.m)}" target="_blank" rel="noopener">▶ voir la démo</a>${techHtml(e)}</div>
       <div class="wlog"><input type="number" inputmode="decimal" placeholder="${prev!=null?prev:'kg'}" value="${w}" data-w="${i}"><span>kg</span></div>
     </div>`;
   }).join('');
@@ -651,18 +679,23 @@ function renderMuscu(){
   DB.refWeights=DB.refWeights||{};
   const ref=DB.refWeights[activeDay]=DB.refWeights[activeDay]||{};
   const edited=DB.custom&&DB.custom[activeDay];
+  const bl=baseLen(activeDay);
   $('muscuList').innerHTML=
     `<div class="ex" style="background:var(--card2)"><div class="info"><div class="nm" style="color:var(--accent)">${prog.name} — ${prog.focus}</div></div></div>`+
     exs.map((e,i)=>{
       const v=(ref[i]!==undefined&&ref[i]!=='')?ref[i]:(DB.lastWeights&&DB.lastWeights[e.n])||'';
-      const isEd=edited&&edited[i];
+      const isAdded=i>=bl;
+      const isEd=(edited&&edited[i])||isAdded;
       return `<div class="ex">
       <div class="info"><div class="nm">${e.n}${isEd?' <span style="color:var(--accent2);font-size:11px">✎</span>':''}</div><div class="meta">${e.s} séries × ${e.r}</div>
         ${e.m?`<div class="muscle">🎯 ${e.m}</div>`:''}
         <a class="demo" href="${demoUrl(e.n,e.m)}" target="_blank" rel="noopener">▶ voir la démo</a>
-        <a class="demo" style="color:var(--accent2);background:rgba(255,176,46,.12);margin-left:6px" href="#" data-edit="${i}">✎ modifier</a>${techHtml(e.n)}</div>
+        <a class="demo" style="color:var(--accent2);background:rgba(255,176,46,.12);margin-left:6px" href="#" data-pick="${i}">✎ changer</a>
+        ${(edited&&edited[i])?`<a class="demo" style="color:var(--muted);background:rgba(139,147,164,.15);margin-left:6px" href="#" data-reset="${i}">↺</a>`:''}
+        ${isAdded?`<a class="demo" style="color:#ff5a3c;background:rgba(255,90,60,.12);margin-left:6px" href="#" data-remove="${i}">✕ retirer</a>`:''}${techHtml(e)}</div>
       <div class="wlog"><input type="number" inputmode="decimal" placeholder="kg" value="${v}" data-ref="${i}"><span>kg</span></div>
-    </div>`;}).join('');
+    </div>`;}).join('')+
+    `<button class="btn ghost sm" id="addExBtn" style="margin-top:10px">＋ Ajouter un exercice depuis la bibliothèque</button>`;
   $('muscuList').querySelectorAll('[data-ref]').forEach(el=>el.onchange=()=>{
     const i=el.dataset.ref;
     ref[i]=el.value;
@@ -670,9 +703,16 @@ function renderMuscu(){
     if(el.value!=='')DB.lastWeights[exs[i].n]=el.value;
     save();toast("Charge enregistrée");
   });
-  $('muscuList').querySelectorAll('[data-edit]').forEach(el=>el.onclick=ev=>{
-    ev.preventDefault();editExercise(activeDay,+el.dataset.edit);
+  $('muscuList').querySelectorAll('[data-pick]').forEach(el=>el.onclick=ev=>{
+    ev.preventDefault();openPicker({mode:'edit',dayKey:activeDay,index:+el.dataset.pick});
   });
+  $('muscuList').querySelectorAll('[data-reset]').forEach(el=>el.onclick=ev=>{
+    ev.preventDefault();resetExercise(activeDay,+el.dataset.reset);
+  });
+  $('muscuList').querySelectorAll('[data-remove]').forEach(el=>el.onclick=ev=>{
+    ev.preventDefault();removeAdded(activeDay,+el.dataset.remove);
+  });
+  $('addExBtn').onclick=()=>openPicker({mode:'add',dayKey:activeDay});
 
   // semaine fixe : Lundi → Dimanche (muscu Lun · Mer · Ven)
   const weekOrder=["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
@@ -703,6 +743,68 @@ function editExercise(dayKey,i){
   DB.custom[dayKey][i]={n:name.trim(),s:(s.trim()||cur.s),r:(r.trim()||cur.r)};
   save();renderMuscu();renderToday();toast("Exercice mis à jour ✎");
 }
+// Réinitialiser un exercice modifié (revenir à l'original du programme)
+function resetExercise(dayKey,i){
+  if(DB.custom&&DB.custom[dayKey]){delete DB.custom[dayKey][i];if(!Object.keys(DB.custom[dayKey]).length)delete DB.custom[dayKey];}
+  save();renderMuscu();renderToday();toast("Exercice réinitialisé ↺");
+}
+// Retirer un exercice ajouté depuis la bibliothèque
+function removeAdded(dayKey,i){
+  const j=i-baseLen(dayKey);
+  if(DB.added&&DB.added[dayKey]&&j>=0){DB.added[dayKey].splice(j,1);if(!DB.added[dayKey].length)delete DB.added[dayKey];}
+  save();renderMuscu();renderToday();toast("Exercice retiré");
+}
+
+/* ============================================================
+   BIBLIOTHÈQUE D'EXERCICES (sélecteur)
+   Photos domaine public + instructions FR — chargées à la demande
+   ============================================================ */
+let LIB=null,LIBLOADING=null,pickerTarget=null;
+function loadLib(){
+  if(LIB)return Promise.resolve(LIB);
+  if(LIBLOADING)return LIBLOADING;
+  LIBLOADING=fetch('data/library.json').then(r=>r.json()).then(j=>{LIB=j;return j;}).catch(()=>{LIB=[];return [];});
+  return LIBLOADING;
+}
+function openPicker(target){
+  pickerTarget=target;
+  $('picker').style.display='flex';
+  $('pkSearch').value='';
+  $('pkResults').innerHTML='<div class="empty">Chargement de la bibliothèque…</div>';
+  loadLib().then(()=>{renderPicker('');$('pkSearch').focus();});
+}
+function closePicker(){$('picker').style.display='none';pickerTarget=null;}
+function renderPicker(q){
+  const box=$('pkResults');
+  if(!LIB){box.innerHTML='<div class="empty">Chargement…</div>';return;}
+  const terms=q.toLowerCase().split(/\s+/).filter(Boolean);
+  let res=LIB;
+  if(terms.length)res=LIB.filter(e=>{const hay=(e.n+' '+e.m+' '+e.eq).toLowerCase();return terms.every(t=>hay.includes(t));});
+  const total=res.length; res=res.slice(0,50);
+  box.innerHTML=(res.map(e=>`<div class="pkitem" data-id="${e.id}">
+      <img loading="lazy" src="${IMG_BASE}${e.img[0]}" alt="">
+      <div class="pkinfo"><div class="pkn">${escapeHtml(e.n)}</div><div class="pkm">🎯 ${escapeHtml(e.m)} · ${escapeHtml(e.eq)}${e.s&&e.s.length?' · 📖':''}</div></div>
+    </div>`).join('')||'<div class="empty">Aucun exercice trouvé</div>')
+    +(total>res.length?`<div class="tiny" style="text-align:center;padding:8px">${total} résultats — affine ta recherche</div>`:'');
+  box.querySelectorAll('[data-id]').forEach(el=>el.onclick=()=>applyPick(el.dataset.id));
+}
+function applyPick(id){
+  const e=LIB.find(x=>x.id===id);if(!e||!pickerTarget)return;
+  const t=pickerTarget;
+  if(t.mode==='add'){
+    DB.added=DB.added||{};DB.added[t.dayKey]=DB.added[t.dayKey]||[];
+    DB.added[t.dayKey].push({n:e.n,m:e.m,s:3,r:"12",img:e.img,steps:e.s});
+  }else{
+    const bl=baseLen(t.dayKey);
+    const patch={n:e.n,m:e.m,img:e.img,steps:e.s};
+    if(t.index<bl){DB.custom=DB.custom||{};DB.custom[t.dayKey]=DB.custom[t.dayKey]||{};DB.custom[t.dayKey][t.index]={...(DB.custom[t.dayKey][t.index]||{}),...patch};}
+    else{const j=t.index-bl;if(DB.added&&DB.added[t.dayKey]&&DB.added[t.dayKey][j])DB.added[t.dayKey][j]={...DB.added[t.dayKey][j],...patch};}
+  }
+  save();closePicker();renderMuscu();renderToday();toast("Exercice mis à jour ✅");
+}
+$('pkSearch').addEventListener('input',e=>renderPicker(e.target.value));
+$('pkClose').onclick=closePicker;
+$('picker').addEventListener('click',e=>{if(e.target.id==='picker')closePicker();});
 
 /* ============================================================
    CARDIO
@@ -927,17 +1029,21 @@ function demoUrl(name,muscle){
   return 'https://www.youtube.com/results?search_query='+encodeURIComponent(q);
 }
 // Volet « Technique » dépliable (instructions FR issues du dataset MIT)
-function techHtml(name){
-  const t=EXMAP[name], im=EXIMG[name];
-  if(!t&&!(im&&im.length))return '';
+function techHtml(e){
+  const name=e.n;
+  // priorité aux données portées par l'exercice (choisi/ajouté depuis la bibliothèque), sinon base des 19 exos
+  const im=(e.img&&e.img.length)?e.img:EXIMG[name];
+  const stepArr=(e.steps&&e.steps.length)?e.steps:(EXMAP[name]?EXMAP[name].s:null);
+  const secArr=EXMAP[name]?EXMAP[name].m:null;
+  if(!(im&&im.length)&&!(stepArr&&stepArr.length))return '';
   let imgs='';
   if(im&&im.length){
     const labs=['Départ','Arrivée'];
     imgs='<div class="eximg">'+im.slice(0,2).map((p,i)=>
       `<figure><img loading="lazy" src="${IMG_BASE}${p}" alt="${escapeHtml(name)}"><figcaption>${labs[i]||''}</figcaption></figure>`).join('')+'</div>';
   }
-  const steps=t?('<ol>'+t.s.map(s=>`<li>${escapeHtml(s)}</li>`).join('')+'</ol>'):'';
-  const sec=(t&&t.m&&t.m.length)?`<div class="secm">Muscles secondaires : ${escapeHtml(t.m.join(', '))}</div>`:'';
+  const steps=(stepArr&&stepArr.length)?('<ol>'+stepArr.map(s=>`<li>${escapeHtml(s)}</li>`).join('')+'</ol>'):'';
+  const sec=(secArr&&secArr.length)?`<div class="secm">Muscles secondaires : ${escapeHtml(secArr.join(', '))}</div>`:'';
   return `<details class="tech"><summary>📖 Technique + photos</summary>${imgs}${steps}${sec}</details>`;
 }
 function fmtDate(s){try{return new Date(s+'T00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});}catch(e){return s;}}
