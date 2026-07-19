@@ -84,6 +84,11 @@
   .ex .tech .eximg figure{margin:0;flex:1;max-width:150px}
   .ex .tech .eximg img{width:100%;border-radius:8px;background:#fff;display:block;aspect-ratio:1/1;object-fit:cover}
   .ex .tech .eximg figcaption{font-size:10px;color:var(--muted);text-align:center;margin-top:2px}
+  .ex .tech .eximg img{cursor:zoom-in}
+  /* ---------- Visionneuse photo plein écran ---------- */
+  #lightbox{position:fixed;inset:0;z-index:220;background:rgba(0,0,0,.9);display:none;
+    align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
+  #lightbox img{max-width:100%;max-height:100%;border-radius:10px;background:#fff}
   .ex .demo{display:inline-flex;align-items:center;gap:3px;margin-top:5px;font-size:11px;font-weight:700;
     color:var(--blue);text-decoration:none;background:rgba(58,160,255,.12);padding:3px 9px;border-radius:20px}
   .ex .demo:active{opacity:.6}
@@ -384,6 +389,8 @@
 </nav>
 
 <div class="toast" id="toast"></div>
+
+<div id="lightbox"><img id="lbImg" src="" alt=""></div>
 
 <div id="picker">
   <div class="pkbox">
@@ -805,6 +812,12 @@ function applyPick(id){
 $('pkSearch').addEventListener('input',e=>renderPicker(e.target.value));
 $('pkClose').onclick=closePicker;
 $('picker').addEventListener('click',e=>{if(e.target.id==='picker')closePicker();});
+// Visionneuse : ouvrir une photo de technique en grand
+document.addEventListener('click',e=>{
+  const img=e.target.closest('.eximg img');
+  if(img){$('lbImg').src=img.src;$('lightbox').style.display='flex';}
+});
+$('lightbox').onclick=()=>{$('lightbox').style.display='none';$('lbImg').src='';};
 
 /* ============================================================
    CARDIO
