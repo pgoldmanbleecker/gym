@@ -457,6 +457,8 @@ const DAY_FR={monday:"Lundi",tuesday:"Mardi",wednesday:"Mercredi",thursday:"Jeud
 // 3 séances « haut du corps » par semaine : Lundi · Mercredi · Vendredi
 const TRAINING_DAYS=["monday","wednesday","friday"];
 const SESSIONS=TRAINING_DAYS.map(k=>({key:k,...PROGRAM[k]}));
+// Rubrique Abs (bonus, hors planning hebdo)
+PROGRAM.abs={"name":"Abs","focus":"Abdominaux — à la poulie","ex":[{"n":"Crunch à la poulie (à genoux)","m":"Abdominaux","s":3,"r":"15","img":["Cable_Crunch/0.jpg","Cable_Crunch/1.jpg"],"steps":["Fixe une poignée à corde à une poulie haute et agenouille-toi dos à la machine.","Tiens la poignée corde des deux mains et place-la derrière ta tête, en gardant tes coudes vers les côtés.","En gardant tes hanches immobiles, fléchis ta taille et enroule ton torse vers tes cuisses.","Marque une pause en bas, puis reviens lentement à la position de départ.","Répète le nombre de répétitions souhaité."]},{"n":"Crunch à la poulie (assis)","m":"Abdominaux","s":3,"r":"15","img":["Cable_Seated_Crunch/0.jpg","Cable_Seated_Crunch/1.jpg"],"steps":["Assieds-toi sur une machine à câble, les pieds à plat sur le sol et les genoux fléchis.","Tiens la poignée de câble des deux mains et positionne-la derrière ta tête.","Gaine tes abdominaux et enroule lentement ton haut du corps vers l'avant, en amenant ta poitrine vers tes genoux.","Marque une pause en haut, puis reviens lentement à la position de départ.","Répète le nombre de répétitions souhaité."]},{"n":"Crunch inversé à la poulie","m":"Abdominaux","s":3,"r":"15","img":["Cable_Reverse_Crunch/0.jpg","Cable_Reverse_Crunch/1.jpg"],"steps":["Fixe un câble à une poulie basse et allonge-toi sur le dos sur un tapis.","Tiens le câble des deux mains et étends tes bras droit vers le plafond.","Fléchis les genoux et lève les jambes en amenant tes cuisses vers ta poitrine.","Tout en gardant le haut de ton corps stable, enroule ton bassin vers ta poitrine en soulevant tes hanches du tapis.","Marque une pause en haut, puis abaisse lentement tes hanches pour revenir à la position de départ.","Répète le nombre de répétitions souhaité."]}]};
 /* Instructions FR issues de exercises-dataset (données MIT) — © Gym visual pour les médias, non inclus */
 const IMG_BASE="https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
 /* Photos domaine public (Unlicense) — yuhonas/free-exercise-db */
@@ -675,9 +677,12 @@ $('validateToday').onclick=()=>{
 let activeDay=null;
 function renderMuscu(){
   const chips=$('dayChips');
-  const days=TRAINING_DAYS;
+  const days=TRAINING_DAYS.concat('abs');
   if(!activeDay){const sc=todaySchedule();activeDay=(!sc.rest)?sc.session.key:"monday";}
-  chips.innerHTML=days.map((d,i)=>`<div class="chip ${d===activeDay?'on':''}" data-d="${d}">${DAY_FR[d]}<br><small style="opacity:.8">${PROGRAM[d].name}</small></div>`).join('');
+  chips.innerHTML=days.map((d,i)=>{
+    const top=d==='abs'?'Abs ⭐':DAY_FR[d];
+    return `<div class="chip ${d===activeDay?'on':''}" data-d="${d}">${top}<br><small style="opacity:.8">${PROGRAM[d].name}</small></div>`;
+  }).join('');
   chips.querySelectorAll('[data-d]').forEach(c=>c.onclick=()=>{activeDay=c.dataset.d;renderMuscu();});
 
   const prog=PROGRAM[activeDay];
